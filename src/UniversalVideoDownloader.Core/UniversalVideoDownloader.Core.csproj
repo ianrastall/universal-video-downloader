@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- UI-free logic: settings, link detection, tool management, yt-dlp process handling.
+       Builds and tests on any OS. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>UniversalVideoDownloader.Core</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="UniversalVideoDownloader.Tests" />
+  </ItemGroup>
+</Project>

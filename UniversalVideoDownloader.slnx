@@ -1,0 +1,15 @@
+<Solution>
+  <Configurations>
+    <Platform Name="x64" />
+  </Configurations>
+  <Folder Name="/src/">
+    <Project Path="src/UniversalVideoDownloader.App/UniversalVideoDownloader.App.csproj">
+      <Platform Solution="*|x64" Project="x64" />
+    </Project>
+    <Project Path="src/UniversalVideoDownloader.Core/UniversalVideoDownloader.Core.csproj" />
+    <Project Path="src/UniversalVideoDownloader.ViewModels/UniversalVideoDownloader.ViewModels.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/UniversalVideoDownloader.Tests/UniversalVideoDownloader.Tests.csproj" />
+  </Folder>
+</Solution>
