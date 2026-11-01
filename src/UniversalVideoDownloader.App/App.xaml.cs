@@ -13,6 +13,8 @@ namespace UniversalVideoDownloader.App;
 
 public partial class App : Application
 {
+    public static Jupiter.UI.AccentService Accent { get; private set; } = null!;
+    public static Jupiter.UI.ThemeService Themes { get; private set; } = null!;
     private ServiceProvider? _services;
     private MainWindow? _window;
 
@@ -43,6 +45,9 @@ public partial class App : Application
         }
 
         _services = ConfigureServices(DispatcherQueue.GetForCurrentThread());
+        var appearance = new AppearancePreferences(_services.GetRequiredService<SettingsService>());
+        Accent = new(appearance);
+        Themes = new(appearance);
         _window = _services.GetRequiredService<MainWindow>();
         _window.Closed += (_, _) => _services.Dispose();
         _window.Activate();

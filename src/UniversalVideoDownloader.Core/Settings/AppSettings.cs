@@ -4,6 +4,15 @@ namespace UniversalVideoDownloader.Core.Settings;
 /// Missing properties in the file fall back to the defaults below.</summary>
 public sealed class AppSettings
 {
+    // Jupiter presentation preferences; old settings retain their defaults.
+    public string? Theme { get; set; }
+    public bool UseCustomAccent { get; set; }
+    public string? CustomAccent { get; set; }
+    public int WindowX { get; set; } = int.MinValue;
+    public int WindowY { get; set; } = int.MinValue;
+    public int WindowWidth { get; set; } = 1200;
+    public int WindowHeight { get; set; } = 800;
+    public bool WindowMaximized { get; set; }
     public static readonly int[] MaxHeightChoices = [0, 4320, 2160, 1440, 1080, 720, 480, 360];
 
     // Downloads

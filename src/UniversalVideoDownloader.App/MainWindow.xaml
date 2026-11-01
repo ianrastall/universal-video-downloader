@@ -1,62 +1,57 @@
-<?xml version="1.0" encoding="utf-8" ?>
-<Window
-    x:Class="UniversalVideoDownloader.App.MainWindow"
-    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:local="using:UniversalVideoDownloader.App"
-    Title="Universal Video Downloader">
-
-    <Window.SystemBackdrop>
-        <MicaBackdrop />
-    </Window.SystemBackdrop>
-
-    <Grid x:Name="RootGrid">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
-        </Grid.RowDefinitions>
-
-        <Grid x:Name="AppTitleBar" Height="48" Padding="16,0,0,0">
-            <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
-                <FontIcon Glyph="&#xE896;" FontSize="16" />
-                <TextBlock Text="Universal Video Downloader" Style="{StaticResource CaptionTextBlockStyle}" VerticalAlignment="Center" />
-            </StackPanel>
-        </Grid>
-
-        <NavigationView
-            x:Name="Nav"
-            Grid.Row="1"
-            PaneDisplayMode="Top"
-            IsBackButtonVisible="Collapsed"
-            IsSettingsVisible="True"
-            SelectionChanged="OnNavigationSelectionChanged">
-            <NavigationView.MenuItems>
-                <NavigationViewItem x:Name="DownloadsItem" Content="Downloads" Tag="Downloads">
-                    <NavigationViewItem.Icon>
-                        <FontIcon Glyph="&#xE896;" />
-                    </NavigationViewItem.Icon>
-                </NavigationViewItem>
-                <NavigationViewItem Content="Tools" Tag="Tools">
-                    <NavigationViewItem.Icon>
-                        <FontIcon Glyph="&#xE90F;" />
-                    </NavigationViewItem.Icon>
-                </NavigationViewItem>
-            </NavigationView.MenuItems>
-
-            <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="*" />
-                </Grid.RowDefinitions>
-
-                <InfoBar
-                    Margin="16,8,16,0"
-                    IsOpen="{x:Bind ViewModel.Notifications.IsOpen, Mode=TwoWay}"
-                    Message="{x:Bind ViewModel.Notifications.Message, Mode=OneWay}"
-                    Severity="{x:Bind local:XamlConvert.Severity(ViewModel.Notifications.Level), Mode=OneWay}" />
-
-                <Frame x:Name="ContentFrame" Grid.Row="1" />
-            </Grid>
-        </NavigationView>
-    </Grid>
+<Window x:Class="UniversalVideoDownloader.App.MainWindow"
+ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ xmlns:local="using:UniversalVideoDownloader.App" Title="Universal Video Downloader">
+ <Grid x:Name="RootGrid" Background="{ThemeResource JupiterWindowBrush}">
+  <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="32"/></Grid.RowDefinitions>
+  <MenuBar>
+   <MenuBarItem Title="File">
+    <MenuFlyoutItem Text="Import text file…" Command="{x:Bind Downloads.ImportFileCommand}" />
+    <MenuFlyoutSeparator/><MenuFlyoutItem x:Name="SettingsMenuItem" Text="Settings" Click="SettingsClicked" /><MenuFlyoutSeparator/><MenuFlyoutItem Text="Exit" Click="ExitClicked" />
+   </MenuBarItem>
+   <MenuBarItem Title="View"><MenuFlyoutItem Text="Downloads" Click="DownloadsClicked"/><MenuFlyoutItem Text="Clipboard" Click="ClipboardClicked"/><MenuFlyoutItem Text="Tools" Click="ToolsClicked"/></MenuBarItem>
+   <MenuBarItem Title="Queue">
+    <MenuFlyoutItem Text="Add to queue" Command="{x:Bind Downloads.AddFromInputCommand}"/>
+    <MenuFlyoutItem Text="Add from clipboard" Command="{x:Bind Downloads.AddFromClipboardCommand}"/>
+    <MenuFlyoutItem Text="{x:Bind Downloads.QueueToggleText, Mode=OneWay}" Command="{x:Bind Downloads.ToggleQueueCommand}"/>
+    <MenuFlyoutItem Text="Retry failed" Command="{x:Bind Downloads.RetryFailedCommand}"/>
+    <MenuFlyoutItem Text="Clear finished" Command="{x:Bind Downloads.ClearFinishedCommand}"/>
+    <MenuFlyoutItem Text="Open folder" Command="{x:Bind Downloads.OpenOutputFolderCommand}"/>
+    <MenuFlyoutItem Text="Cancel all" Command="{x:Bind Downloads.CancelAllCommand}"/>
+    <MenuFlyoutSeparator/>
+    <MenuFlyoutItem Text="Open selected file" Click="ItemClicked" Tag="OpenFile"/>
+    <MenuFlyoutItem Text="Show selected in folder" Click="ItemClicked" Tag="RevealFile"/>
+    <MenuFlyoutItem Text="Retry selected" Click="ItemClicked" Tag="Retry"/>
+    <MenuFlyoutItem Text="Cancel selected" Click="ItemClicked" Tag="Cancel"/>
+    <MenuFlyoutItem Text="Show or hide selected log" Click="ItemClicked" Tag="ToggleLog"/>
+    <MenuFlyoutItem Text="Copy selected link" Click="ItemClicked" Tag="CopyUrl"/>
+    <MenuFlyoutItem Text="Remove selected from queue" Click="ItemClicked" Tag="Remove"/>
+   </MenuBarItem>
+   <MenuBarItem Title="Clipboard">
+    <MenuFlyoutItem Text="Scan clipboard history" Command="{x:Bind Inbox.ScanHistoryCommand}"/>
+    <MenuFlyoutItem Text="Add ticked to queue" Command="{x:Bind Inbox.AddSelectedCommand}"/>
+    <MenuFlyoutItem Text="Tick all / none" Command="{x:Bind Inbox.SelectAllCommand}"/>
+    <MenuFlyoutItem Text="Clear list" Command="{x:Bind Inbox.ClearCommand}"/>
+   </MenuBarItem>
+   <MenuBarItem Title="Tools">
+    <MenuFlyoutItem Text="Check for updates" Command="{x:Bind Tools.CheckForUpdatesCommand}"/>
+    <MenuFlyoutItem Text="Install or update all" Command="{x:Bind Tools.UpdateAllCommand}"/>
+    <MenuFlyoutItem Text="Open tools folder" Command="{x:Bind Tools.OpenToolsFolderCommand}"/>
+   </MenuBarItem>
+   <MenuBarItem Title="Help"><MenuFlyoutItem Text="Documentation" Click="DocumentationClicked"/><MenuFlyoutItem Text="Discussions" Click="DiscussionsClicked"/><MenuFlyoutSeparator/><MenuFlyoutItem Text="About Universal Video Downloader" Click="AboutClicked"/></MenuBarItem>
+  </MenuBar>
+  <NavigationView x:Name="Nav" Grid.Row="1" PaneDisplayMode="Left" OpenPaneLength="224" CompactPaneLength="48" IsBackButtonVisible="Collapsed" SelectionChanged="OnNavigationSelectionChanged">
+   <NavigationView.MenuItems>
+    <NavigationViewItem x:Name="DownloadsItem" Content="Downloads" Tag="Downloads" Icon="Download"/>
+    <NavigationViewItem x:Name="ClipboardItem" Content="Clipboard" Tag="Clipboard" Icon="Paste"/>
+    <NavigationViewItem x:Name="ToolsItem" Content="Tools" Tag="Tools" Icon="Repair"/>
+   </NavigationView.MenuItems>
+   <Grid Background="{ThemeResource JupiterWindowBrush}"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+    <InfoBar Margin="24,8,24,0" IsOpen="{x:Bind ViewModel.Notifications.IsOpen, Mode=TwoWay}" Message="{x:Bind ViewModel.Notifications.Message, Mode=OneWay}" Severity="{x:Bind local:XamlConvert.Severity(ViewModel.Notifications.Level), Mode=OneWay}" />
+    <Frame x:Name="ContentFrame" Grid.Row="1" />
+   </Grid>
+  </NavigationView>
+  <Border Grid.Row="2" Background="{ThemeResource JupiterSurfaceBrush}" BorderBrush="{ThemeResource JupiterSeparatorBrush}" BorderThickness="0,1,0,0" Padding="12,0">
+   <TextBlock VerticalAlignment="Center" Style="{StaticResource JupiterCaptionTextStyle}" Text="{x:Bind Downloads.QueueSummary, Mode=OneWay}" />
+  </Border>
+ </Grid>
 </Window>

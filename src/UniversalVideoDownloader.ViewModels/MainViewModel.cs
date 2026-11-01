@@ -45,6 +45,8 @@ public sealed class MainViewModel
         Downloads.RestoreQueue();
         await Inbox.StartAsync();
         await Tools.StartupAsync();
+        if (Downloads.RestoreError is { } recovery)
+            Notifications.Show(recovery, NotificationLevel.Warning);
     }
 
     public void Shutdown() => Downloads.Shutdown();

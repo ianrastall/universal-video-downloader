@@ -1,81 +1,61 @@
-using System.Globalization;
+using System.Runtime.InteropServices;
+using System.Text;
+using System.Text.Json;
+using Microsoft.Win32.SafeHandles;
 
 namespace UniversalVideoDownloader.Core.Downloads;
 
-/// <summary>Turns lines of yt-dlp output into <see cref="JobUpdate"/>s. The markers match the
-/// templates passed by <see cref="YtDlpArguments"/>.</summary>
+/// <summary>Managed adapter for the stateless Jupiter Rust download parser (ABI 1).</summary>
 public static class YtDlpOutputParser
 {
     public const string ProgressMarker = "@@P ";
     public const string TitleMarker = "@@T ";
     public const string FileMarker = "@@F ";
-
-    private static readonly HashSet<string> Stages =
-    [
-        "Merger", "ExtractAudio", "EmbedThumbnail", "Metadata", "EmbedSubtitle",
-        "FixupM3u8", "FixupM4a", "FixupDuplicateMoov", "FixupTimestamp", "FixupStretched",
-        "VideoConvertor", "VideoRemuxer", "ThumbnailsConvertor", "MoveFiles", "SponsorBlock", "ModifyChapters",
-    ];
-
+    static YtDlpOutputParser()
+    {
+        NativeLibrary.SetDllImportResolver(typeof(YtDlpOutputParser).Assembly, (name, assembly, path) =>
+        {
+            if (name != "uvd_core") return IntPtr.Zero;
+            var file = OperatingSystem.IsWindows() ? "uvd_core.dll" : OperatingSystem.IsMacOS() ? "libuvd_core.dylib" : "libuvd_core.so";
+            return NativeLibrary.Load(Path.Combine(AppContext.BaseDirectory, file));
+        });
+        if (AbiVersion() != 1) throw new InvalidOperationException("The download core has an incompatible ABI.");
+    }
+    [DllImport("uvd_core", EntryPoint = "uvd_abi_version", CallingConvention = CallingConvention.Cdecl)]
+    private static extern uint AbiVersion();
+    [DllImport("uvd_core", EntryPoint = "uvd_parse_line", CallingConvention = CallingConvention.Cdecl)]
+    private static extern NativeResult ParseLine(byte[] input, nuint length, byte stderr);
+    [DllImport("uvd_core", EntryPoint = "uvd_result_free", CallingConvention = CallingConvention.Cdecl)]
+    private static extern void FreeResult(IntPtr result);
+    private sealed class NativeResult : SafeHandleZeroOrMinusOneIsInvalid
+    {
+        public NativeResult() : base(true) { }
+        protected override bool ReleaseHandle() { FreeResult(handle); return true; }
+    }
     public static IReadOnlyList<JobUpdate> Parse(string line, bool fromStdErr)
     {
-        if (line.StartsWith(ProgressMarker, StringComparison.Ordinal))
+        ArgumentNullException.ThrowIfNull(line);
+        var bytes = Encoding.UTF8.GetBytes(line);
+        // One sentinel byte also supplies a valid nonnull pointer for an empty line.
+        using var result = ParseLine(bytes.Length == 0 ? new byte[1] : bytes, (nuint)bytes.Length, fromStdErr ? (byte)1 : (byte)0);
+        if (result.IsInvalid) throw new InvalidOperationException("The download core rejected the output line.");
+        using var document = JsonDocument.Parse(Marshal.PtrToStringUTF8(result.DangerousGetHandle())!);
+        var updates = new List<JobUpdate>();
+        foreach (var item in document.RootElement.EnumerateArray())
         {
-            var f = line[ProgressMarker.Length..].Split('|');
-            double? Get(int i) => i < f.Length ? Number(f[i]) : null;
-            return [new JobUpdate.Progress(Get(0), Get(1) ?? Get(2), Get(3), Get(4))];
-        }
-
-        if (line.StartsWith(TitleMarker, StringComparison.Ordinal))
-        {
-            return [new JobUpdate.Title(line[TitleMarker.Length..])];
-        }
-
-        if (line.StartsWith(FileMarker, StringComparison.Ordinal))
-        {
-            var path = line[FileMarker.Length..];
-            return [new JobUpdate.FileSaved(path), new JobUpdate.Log("Saved: " + path, false)];
-        }
-
-        var updates = new List<JobUpdate>(2);
-        if (line.StartsWith("[download] ", StringComparison.Ordinal))
-        {
-            var rest = line["[download] ".Length..];
-            if (rest.StartsWith("Destination:", StringComparison.Ordinal))
+            string Text() => item.GetProperty("text").GetString()!;
+            int Int(string key) => item.GetProperty(key).GetInt32();
+            double? Number(string key) => item.GetProperty(key).ValueKind == JsonValueKind.Null ? null : item.GetProperty(key).GetDouble();
+            updates.Add(item.GetProperty("kind").GetString() switch
             {
-                updates.Add(new JobUpdate.Destination());
-            }
-            else if (rest.StartsWith("Downloading item ", StringComparison.Ordinal))
-            {
-                // "Downloading item 3 of 10"
-                var parts = rest["Downloading item ".Length..].Split(" of ");
-                if (parts.Length == 2
-                    && int.TryParse(parts[0].Trim(), CultureInfo.InvariantCulture, out var index)
-                    && int.TryParse(parts[1].Trim(), CultureInfo.InvariantCulture, out var count))
-                {
-                    updates.Add(new JobUpdate.PlaylistItem(index, count));
-                }
-            }
+                "progress" => new JobUpdate.Progress(Number("downloaded"), Number("total"), Number("speed"), Number("eta")),
+                "title" => new JobUpdate.Title(Text()), "file" => new JobUpdate.FileSaved(Text()),
+                "streams" => new JobUpdate.Streams(Int("count")), "destination" => new JobUpdate.Destination(),
+                "playlist" => new JobUpdate.PlaylistItem(Int("index"), Int("count")),
+                "stage" => new JobUpdate.Stage(Text()), "log" => new JobUpdate.Log(Text(), item.GetProperty("error").GetBoolean()),
+                _ => throw new InvalidOperationException("Unknown download core response."),
+            });
         }
-        else if (line.StartsWith("[info] ", StringComparison.Ordinal))
-        {
-            // "[info] abc: Downloading 1 format(s): 399+251"
-            var at = line.IndexOf("format(s): ", StringComparison.Ordinal);
-            if (at >= 0)
-            {
-                updates.Add(new JobUpdate.Streams(line[(at + "format(s): ".Length)..].Trim().Split('+').Length));
-            }
-        }
-        else if (line.StartsWith('[') && line.IndexOf(']') is > 1 and var close && Stages.Contains(line[1..close]))
-        {
-            updates.Add(new JobUpdate.Stage(line[1..close]));
-        }
-
-        var isError = fromStdErr && line.StartsWith("ERROR", StringComparison.Ordinal);
-        updates.Add(new JobUpdate.Log(line, isError));
         return updates;
     }
-
-    private static double? Number(string s) =>
-        double.TryParse(s.Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out var v) && double.IsFinite(v) ? v : null;
 }

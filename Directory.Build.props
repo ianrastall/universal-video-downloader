@@ -4,7 +4,8 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <Deterministic>true</Deterministic>
-    <Version>0.1.0</Version>
+    <Version>0.2.0</Version>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
     <Company>Universal Video Downloader</Company>
     <Product>Universal Video Downloader</Product>
   </PropertyGroup>

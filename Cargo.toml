@@ -1,0 +1,12 @@
+[package]
+name = "uvd-core"
+version = "0.2.0"
+edition = "2024"
+license = "MIT"
+
+[lib]
+path = "core/src/lib.rs"
+crate-type = ["rlib", "cdylib"]
+
+[dependencies]
+serde_json = "=1.0.150"

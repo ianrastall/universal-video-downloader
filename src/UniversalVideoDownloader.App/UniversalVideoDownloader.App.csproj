@@ -3,9 +3,12 @@
        folder runs on a machine without the .NET or Windows App SDK runtimes installed. -->
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
-    <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
-    <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
+    <TargetFramework>net10.0-windows10.0.26100.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.26100.0</TargetPlatformMinVersion>
+    <SupportedOSPlatformVersion>10.0.26100.0</SupportedOSPlatformVersion>
+    <JupiterUIRoot Condition="'$(JupiterUIRoot)' == ''">$(MSBuildThisFileDirectory)..\..\..\jupiter-ui</JupiterUIRoot>
+    <RepoRoot>$(MSBuildThisFileDirectory)..\..\</RepoRoot>
+    <ApplicationIcon>Assets\UniversalVideoDownloader.ico</ApplicationIcon>
     <RootNamespace>UniversalVideoDownloader.App</RootNamespace>
     <AssemblyName>UniversalVideoDownloader</AssemblyName>
     <ApplicationManifest>app.manifest</ApplicationManifest>
@@ -28,4 +31,12 @@
     <ProjectReference Include="..\UniversalVideoDownloader.Core\UniversalVideoDownloader.Core.csproj" />
     <ProjectReference Include="..\UniversalVideoDownloader.ViewModels\UniversalVideoDownloader.ViewModels.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <None Update="Assets\UniversalVideoDownloader.ico" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+  <Target Name="PublishXaml" AfterTargets="Publish">
+    <ItemGroup><AppXaml Include="$(OutDir)$(AssemblyName).pri;$(OutDir)**\*.xbf" /></ItemGroup>
+    <Copy SourceFiles="@(AppXaml)" DestinationFiles="@(AppXaml->'$(PublishDir)%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
+  </Target>
+  <Import Project="$(JupiterUIRoot)\build\Jupiter.UI.targets" />
 </Project>

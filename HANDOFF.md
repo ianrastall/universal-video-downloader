@@ -1,69 +1,75 @@
-# Handoff
+# Universal Video Downloader handoff
 
-## Current state
+1 November 2026. Release 0.2.0. Canonical checkout:
+`D:\jupiter\universal-video-downloader`, branch main, original Git history preserved.
+The chat-attached OneDrive folder had only an empty Git repository; the project was cloned
+from https://github.com/ianrastall/universal-video-downloader .
 
-First version of the app, replacing the earlier Rust terminal UI (`yt-dlp-manager`). The Rust
-project's tool-update logic (GitHub release lookup, SHA-256 verification, ffmpeg DLL pruning,
-rename-aside replacement of running binaries) and its yt-dlp output parsing were ported to C#
-in `Core`, with the same behaviour.
+## Delivered scope
 
-Implemented:
+Jupiter.UI 1.1 suite shell, standard title/menu/status bars, left navigation, separate clipboard
+page, shared light/dark/Windows theme and accent settings, placement restore, installer and app
+icon. Stable download options, clipboard collection, concurrency and verified tool updates
+remain. Rust owns yt-dlp output parsing; retained C# adapters and JSON ABI are explicit
+exceptions in docs/jupiter-exceptions.md. The ABI/lifetime contract is in docs/abi.md.
 
-- Download queue with concurrency, per-item progress (spread across merged streams and playlist
-  items), cancel, retry, remove, open file, show in folder, copy link, per-item log.
-- Queue persistence; restored items start paused.
-- Input box accepting any number of links in free text, "Add from clipboard", text file import,
-  drag and drop.
-- Clipboard watcher (Win32 `AddClipboardFormatListener` on a message-only window, so it works in
-  the background) feeding a tick-list inbox; optional auto-queue; Win+V history scan through
-  `Windows.ApplicationModel.DataTransfer.Clipboard.GetHistoryItemsAsync`.
-- Link filter: known video sites plus user-added domains, or any link. YouTube links are limited to
-  videos, shorts, playlists and channels. Duplicate detection treats youtu.be and youtube.com
-  forms of one video as the same link.
-- Tools page: detection, update check, install and update for yt-dlp (stable or nightly), deno and
-  ffmpeg with ffprobe. Automatic install and update on start-up. Installs wait for running
-  downloads.
-- Settings page covering output folder, file name template, quality cap, container, audio format,
-  concurrency, embedding, subtitles, playlist handling, archive, cookies, rate limit, extra
-  arguments, clipboard options, tools folder and channel.
-- Single instance: a second launch brings the running window forward.
+Fixes include asynchronous Windows drop deferrals and text-file drops, unique corrupt-queue
+recovery copies with visible startup warnings, protecting unreadable queues against shutdown
+replacement, pausing all restored entries, and accessible names on icon buttons.
 
-## Decisions
+## Build, test and publish
 
-- Three projects so that everything except the XAML views builds and tests without Windows.
-- Unpackaged and self-contained, so the output folder runs anywhere without installers.
-- Referenced the `Microsoft.WindowsAppSDK` metapackage (2.5.1). It also pulls in the AI and ML
-  components, which make the output larger. Referencing `Microsoft.WindowsAppSDK.WinUI` alone is
-  possible (it depends only on Base, Foundation and InteractiveExperiences) but was not tried.
-- ffmpeg comes from BtbN's shared master builds, as in the Rust version, because their asset names
-  carry the git revision that `ffmpeg -version` reports, which makes update checks exact.
-- Clipboard reads use the Win32 API; only clipboard history uses WinRT.
-- Tests use xUnit v3 on Microsoft.Testing.Platform (`global.json` selects it; required by the
-  .NET 10 SDK for xUnit v3).
-- Plain controls rather than CommunityToolkit.WinUI's SettingsCard, to keep dependencies minimal.
+- Windows 11 24H2 x64, .NET SDK 10.0.113, Rust 1.97.0 MSVC, C++ Build Tools / Windows SDK,
+  PowerShell 7 and Inno Setup 6.
+- `./build.ps1 -Verify` produces the self-contained installer and SHA256SUMS.
+- `./build.ps1 -Verify -Install` additionally installs silently for the current user.
+- `./build.ps1 -Verify -JupiterUIRoot artifacts/jupiter-ui` exercises the verified source fallback.
+- `dotnet run --project tests/UniversalVideoDownloader.Smoke -c Release -- <tools-dir> artifacts/media-smoke`
+  runs real video/audio tests using a generated local clip, localhost HTTP server, yt-dlp and FFmpeg.
+- Close the app before rebuilding its loaded native DLL.
+- Commit on main, build from that commit, push main and publish tag v0.2.0 with the installer,
+  SHA256SUMS.txt and Jupiter.UI-source.zip. The normal build fails when installer prerequisites
+  are absent. PDBs are excluded from the installer.
 
-## Verification performed (Linux container, .NET SDK 10.0.112)
+Jupiter.UI has no configured public remote and already has unrelated working changes. No files
+in that checkout were edited here. `build/jupiter-ui.json` pins the exact source archive, including
+its existing fixes. The archive includes its own package lockfile. Keep that asset available at
+the immutable v0.2.0 release URL so fresh public checkouts can build. Do not substitute a different
+snapshot without updating the hash and validating it.
 
-- `dotnet build` of Core and ViewModels: no warnings, no errors.
-- `dotnet test --project tests/UniversalVideoDownloader.Tests`: 48 of 48 passed, six runs in a row.
-- `dotnet restore` of the WinUI app succeeded, so all package versions resolve.
-- All C# in the WinUI project (App, MainWindow, pages' code-behind, services) compiled against the
-  Windows App SDK 2.5.1 reference assemblies, with the XAML-generated members stubbed.
+## Verification performed
 
-Not verified:
+- Release build and publish on Windows: zero warnings/errors, Jupiter style check enabled.
+- 52 managed tests passed, including migration, recovery and parallel native UTF-8 ownership.
+- 3 Rust tests passed; cargo fmt and Clippy with warnings denied passed.
+- Real local HTTP video download and audio extraction passed, with native progress and saved-file
+  events; FFprobe verified the output streams.
+- Runtime tool installation succeeded using the app's official-release lookup and checksum
+  verification (yt-dlp 2026.10.26, Deno 2.9.8, FFmpeg N-128273-g836436cfb9).
+- Installed app launched from the top-level Start Menu shortcut; Downloads, Tools and shared
+  dark/light appearance were visually checked using Computer Use before desktop interaction stopped.
+- Silent upgrade preserved SHA-256 hashes of settings, queue and tool manifest. Silent uninstall
+  preserved the same data and removed the shortcut; reinstall completed. No user media was removed.
 
-- The XAML files. The WinUI XAML compiler needs Windows, so `x:Bind` paths, styles and resource
-  keys have only been checked by reading.
-- Running the app. No window has been shown, and no real download or tool install has been
-  performed. The GitHub API was not reachable from the build container.
+Not verified: clean-machine installation, signing/SmartScreen behavior, live YouTube downloads,
+Windows contrast themes, mixed-DPI displays, OS text scaling and Windows-on-Arm emulation. The
+installer is unsigned. The existing failed user queue entries were preserved and were not retried.
+The local generated-media smoke is intentionally independent of changing site behavior.
 
-## Next steps
+## Locations and lifetime
 
-1. On Windows: `dotnet build src\UniversalVideoDownloader.App -c Release`. Fix any XAML compiler
-   errors it reports (they will name the file and line).
-2. Run it. On first start it should install yt-dlp, deno and ffmpeg into
-   `%LOCALAPPDATA%\UniversalVideoDownloader\tools`; watch the Tools page.
-3. Try: a single YouTube link, a batch pasted from a text file, copying several links in a
-   browser with the app in the background, and "Scan clipboard history".
-4. Check the title bar buttons, the drop target and the window size on a high-DPI screen.
-5. Consider an app icon (none is set yet) and trying the WinUI-only package reference to reduce size.
+Installed binaries: `%LOCALAPPDATA%\Programs\UniversalVideoDownloader`.
+Start: **Universal Video Downloader** (top level, no Jupiter folder).
+Uninstaller: Windows Installed apps / `unins000.exe` in the installation directory.
+Settings/queue/tools/error log remain in `%LOCALAPPDATA%\UniversalVideoDownloader`, with the
+existing `UVD_HOME` override and custom tools-folder behavior. Downloads remain in the configured
+output directory. The installer never includes downloaded tools or user data.
+
+Rust parser calls are stateless and parallel-safe. C# loads the DLL from the app directory,
+checks ABI 1 and frees each Rust-owned result through SafeHandle. Process cancellation kills the
+whole yt-dlp/FFmpeg process tree. Settings are saved atomically through a temporary file and
+replacement; malformed settings retain the original existing .invalid behavior. Corrupt queues
+get uniquely named .invalid-* copies. An unreadable queue disables queue saving until restart.
+
+Repository visibility work: Discussions enabled, searchable repository topics added, release
+announcement plus setup/troubleshooting and feature-request topics published with the release.

@@ -8,4 +8,16 @@
   <ItemGroup>
     <InternalsVisibleTo Include="UniversalVideoDownloader.Tests" />
   </ItemGroup>
+  <PropertyGroup>
+    <RepoRoot>$(MSBuildThisFileDirectory)..\..\</RepoRoot>
+    <NativeCoreFile Condition="$([MSBuild]::IsOSPlatform('Windows'))">uvd_core.dll</NativeCoreFile>
+    <NativeCoreFile Condition="$([MSBuild]::IsOSPlatform('Linux'))">libuvd_core.so</NativeCoreFile>
+    <NativeCoreFile Condition="$([MSBuild]::IsOSPlatform('OSX'))">libuvd_core.dylib</NativeCoreFile>
+  </PropertyGroup>
+  <Target Name="BuildRustCore" BeforeTargets="BeforeBuild" Condition="'$(DesignTimeBuild)' != 'true'">
+    <Exec Command="pwsh -NoProfile -File &quot;$(RepoRoot)build\core.ps1&quot;" />
+  </Target>
+  <ItemGroup>
+    <None Include="$(RepoRoot)artifacts\cargo\release\$(NativeCoreFile)" Link="$(NativeCoreFile)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>

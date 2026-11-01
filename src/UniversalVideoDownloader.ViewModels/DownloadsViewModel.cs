@@ -26,6 +26,8 @@ public sealed partial class DownloadsViewModel : ObservableObject
     private readonly WorkCoordinator _coordinator;
     private bool _shuttingDown;
     private bool _pumping;
+    private bool _canSaveQueue = true;
+    public string? RestoreError { get; private set; }
 
     public DownloadsViewModel(
         SettingsService settings,
@@ -483,7 +485,16 @@ public sealed partial class DownloadsViewModel : ObservableObject
     /// if any are waiting, so nothing downloads unannounced at launch.</summary>
     public void RestoreQueue()
     {
-        var saved = _queueStore.Load();
+        IReadOnlyList<SavedDownload> saved;
+        try { saved = _queueStore.Load(); }
+        catch (Exception ex) when (ex is InvalidDataException or IOException or UnauthorizedAccessException)
+        {
+            _canSaveQueue = ex is InvalidDataException;
+            RestoreError = ex.Message + (_canSaveQueue ? "" : " Queue saving is disabled until the file can be read on restart.");
+            _notifications.Show(RestoreError, NotificationLevel.Warning);
+            return;
+        }
+        if (saved.Count > 0) IsQueueRunning = false;
         foreach (var entry in saved)
         {
             if (Contains(entry.Url))
@@ -506,6 +517,7 @@ public sealed partial class DownloadsViewModel : ObservableObject
 
     public void SaveQueue()
     {
+        if (!_canSaveQueue) return;
         UpdateSummary();
         var entries = Items
             .Where(i => i.Status != DownloadStatus.Completed)

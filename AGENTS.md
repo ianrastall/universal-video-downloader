@@ -8,10 +8,10 @@ Instructions for AI agents and contributors working in this repository.
 - Purpose: Windows GUI for yt-dlp that handles single and bulk downloads, collects links from the
   clipboard, and installs and updates yt-dlp, deno and ffmpeg/ffprobe itself.
 - Language: C# 14 on .NET 10.
-- UI: WinUI 3 (Windows App SDK 2.x), MVVM with CommunityToolkit.Mvvm, dark theme only.
+- UI: WinUI 3 (Windows App SDK 2.x), MVVM with CommunityToolkit.Mvvm, shared Jupiter.UI 1.1 dark/light/Windows themes.
 - Application type: unpackaged, self-contained desktop app (`WindowsPackageType=None`,
-  `WindowsAppSDKSelfContained=true`). No MSIX.
-- Supported OS: Windows 10 1809+ and Windows 11, x64.
+  `WindowsAppSDKSelfContained=true`). Conventional Inno Setup installer; no MSIX.
+- Supported OS: Windows 11 24H2 (26100)+, x64.
 
 ## Layout and boundaries
 
@@ -26,17 +26,25 @@ Instructions for AI agents and contributors working in this repository.
 Entry points: `App.xaml.cs` (`OnLaunched`, dependency injection setup), `MainWindow.xaml.cs`,
 `MainViewModel.StartAsync` (start-up sequence).
 
+## Jupiter architecture
+
+The Rust core (`core/src/lib.rs`) owns download output parsing. Managed Core owns the retained
+stable adapters; see `docs/jupiter-exceptions.md` and `docs/abi.md` for deliberate exceptions.
+Jupiter.UI is imported from the shared sibling or the verified release source snapshot.
+Do not duplicate its resources or change the shared checkout as part of unrelated app work.
+Work on main; preserve local work; commit, push and publish as authorized by the workspace.
+
 ## Commands
 
 Run from the repository root.
 
 - Build app (Windows only): `dotnet build src\UniversalVideoDownloader.App -c Release`
 - Run app: `dotnet run --project src\UniversalVideoDownloader.App`
-- Publish: `dotnet publish src\UniversalVideoDownloader.App -c Release -o publish`
+- Build release installer: `./build.ps1 -Verify` (add `-Install` for local installation).
 - Test (any OS): `dotnet test --project tests\UniversalVideoDownloader.Tests`
 - Build libraries only (any OS): `dotnet build src/UniversalVideoDownloader.ViewModels`
 
-There is no separate lint step. The build uses `.editorconfig`; keep builds free of warnings.
+Run `cargo fmt --all -- --check` and `cargo clippy --locked --all-targets --target-dir artifacts/cargo -- -D warnings`. The build uses `.editorconfig`; keep builds free of warnings.
 
 ## Conventions
 
@@ -60,5 +68,5 @@ committed or bundled.
 
 ## Verification limits
 
-The WinUI XAML compiler only runs on Windows. Changes to `.xaml` files cannot be verified on Linux
+Build pinned SDKs and locked restores. The WinUI XAML compiler only runs on Windows. Changes to `.xaml` files cannot be verified on Linux
 or macOS; say so when reporting, and have them built on Windows.

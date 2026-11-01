@@ -102,17 +102,12 @@ public sealed partial class SettingsViewModel : ObservableObject
         set => SetIndex(value, AudioFormatOptions.Length, (int)S.AudioFormat, v => S.AudioFormat = (AudioFormat)v);
     }
 
-    public double Concurrency
+    public int Concurrency
     {
         get => S.Concurrency;
         set
         {
-            if (double.IsNaN(value))
-            {
-                return;
-            }
-
-            var v = Math.Clamp((int)Math.Round(value), 1, 8);
+            var v = Math.Clamp(value, 1, 8);
             if (SetProperty(S.Concurrency, v, S, static (s, x) => s.Concurrency = x))
             {
                 Save();

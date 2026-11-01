@@ -27,9 +27,12 @@ public sealed class QueueStore(string path)
                 ? JsonSerializer.Deserialize(File.ReadAllText(Path), CoreJsonContext.Default.ListSavedDownload) ?? []
                 : [];
         }
-        catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException)
+        catch (JsonException ex)
         {
-            return [];
+            // Keep every corrupt input, including successive failures, before a future save.
+            var backup = Path + ".invalid-" + Guid.NewGuid().ToString("N");
+            File.Copy(Path, backup);
+            throw new InvalidDataException($"The saved queue could not be read. A recovery copy is at {backup}.", ex);
         }
     }
 
