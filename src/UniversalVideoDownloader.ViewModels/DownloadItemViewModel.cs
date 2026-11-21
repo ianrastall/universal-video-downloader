@@ -47,12 +47,21 @@ public sealed partial class DownloadItemViewModel : ObservableObject
 
     public string Host { get; }
 
-    public bool IsAudio => Mode == DownloadMode.Audio;
+    public bool IsAudio => Mode is DownloadMode.Audio or DownloadMode.Audiobook;
 
     /// <summary>Segoe Fluent Icons glyph: Audio or Video.</summary>
     public string ModeGlyph => IsAudio ? "" : "";
 
-    public string ModeText => IsAudio ? "Audio" : "Video";
+    public string ModeText => Mode switch
+    {
+        DownloadMode.Audio => "Audio",
+        DownloadMode.Gallery => "Gallery",
+        DownloadMode.TwitchVideo => "Twitch video",
+        DownloadMode.TwitchChat => "Twitch chat",
+        DownloadMode.TwitchChatVideo => "Twitch chat video",
+        DownloadMode.Audiobook => "Audible audiobook",
+        _ => "Video",
+    };
 
     public ObservableCollection<string> LogLines { get; } = [];
 
@@ -227,7 +236,7 @@ public sealed partial class DownloadItemViewModel : ObservableObject
         }
         else
         {
-            ErrorMessage ??= $"yt-dlp exited with code {exitCode}.";
+            ErrorMessage ??= $"{DownloadModes.ToolName(Mode)} exited with code {exitCode}.";
             Status = DownloadStatus.Failed;
             IsProgressIndeterminate = false;
         }

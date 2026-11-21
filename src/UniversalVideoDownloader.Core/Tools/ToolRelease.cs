@@ -1,7 +1,7 @@
 namespace UniversalVideoDownloader.Core.Tools;
 
 /// <summary>An upstream release asset for one tool.</summary>
-public sealed record ToolRelease(string Version, string AssetName, string AssetUrl, string? ChecksumUrl, long? Size);
+public sealed record ToolRelease(string Version, string AssetName, string AssetUrl, string? ChecksumUrl, long? Size, string? Sha256 = null);
 
 public sealed record ToolInstallProgress(string Stage, long BytesDone = 0, long? BytesTotal = null)
 {

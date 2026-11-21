@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Win32;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using UniversalVideoDownloader.App.Services;
@@ -63,7 +64,8 @@ public partial class App : Application
         // Core
         services.AddSingleton(new SettingsService(settings, settingsStore));
         services.AddSingleton(QueueStore.Default);
-        services.AddSingleton<IDownloadRunner, YtDlpRunner>();
+        services.AddSingleton(new LibationClient(() => FindLibation(settings.LibationDirectory)));
+        services.AddSingleton<IDownloadRunner, DownloadRunner>();
         services.AddSingleton<IToolManager>(_ => new ToolManager());
 
         // Platform services
@@ -77,6 +79,7 @@ public partial class App : Application
         services.AddSingleton<NotificationViewModel>();
         services.AddSingleton<WorkCoordinator>();
         services.AddSingleton<DownloadsViewModel>();
+        services.AddSingleton<AudibleViewModel>();
         services.AddSingleton<ClipboardInboxViewModel>();
         services.AddSingleton<ToolsViewModel>();
         services.AddSingleton<SettingsViewModel>();
@@ -84,6 +87,34 @@ public partial class App : Application
 
         services.AddSingleton<MainWindow>();
         return services.BuildServiceProvider();
+    }
+
+    private static string? FindLibation(string? configuredDirectory)
+    {
+        if (!string.IsNullOrWhiteSpace(configuredDirectory))
+        {
+            var configured = Path.Combine(configuredDirectory, "LibationCli.exe");
+            return File.Exists(configured) ? configured : null;
+        }
+
+        foreach (var hive in new[] { Registry.CurrentUser, Registry.LocalMachine })
+        {
+            using var uninstall = hive.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall");
+            if (uninstall is null) continue;
+            foreach (var keyName in uninstall.GetSubKeyNames())
+            {
+                using var app = uninstall.OpenSubKey(keyName);
+                if (app?.GetValue("DisplayName") is string name
+                    && (name == "Libation" || name.StartsWith("Libation (", StringComparison.OrdinalIgnoreCase))
+                    && app.GetValue("InstallLocation") is string location)
+                {
+                    var candidate = Path.Combine(location, "LibationCli.exe");
+                    if (File.Exists(candidate)) return candidate;
+                }
+            }
+        }
+
+        return null;
     }
 
     private void OnUnhandledException(object sender, Microsoft.UI.Xaml.UnhandledExceptionEventArgs e)

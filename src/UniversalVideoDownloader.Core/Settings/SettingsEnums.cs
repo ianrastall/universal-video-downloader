@@ -4,6 +4,11 @@ public enum DownloadMode
 {
     Video,
     Audio,
+    Gallery,
+    TwitchVideo,
+    TwitchChat,
+    TwitchChatVideo,
+    Audiobook,
 }
 
 public enum VideoContainer

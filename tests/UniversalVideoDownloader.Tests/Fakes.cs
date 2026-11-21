@@ -97,9 +97,9 @@ internal sealed class FakeShell : IShellService
 
 internal sealed class FakeToolManager : IToolManager
 {
-    public Dictionary<ToolId, string?> Installed { get; } = new() { [ToolId.YtDlp] = null, [ToolId.Deno] = null, [ToolId.Ffmpeg] = null };
+    public Dictionary<ToolId, string?> Installed { get; } = ToolIdExtensions.All.ToDictionary(id => id, _ => (string?)null);
 
-    public Dictionary<ToolId, string> Latest { get; } = new() { [ToolId.YtDlp] = "2026.09.01", [ToolId.Deno] = "2.5.1", [ToolId.Ffmpeg] = "N-1-gabc" };
+    public Dictionary<ToolId, string> Latest { get; } = new() { [ToolId.YtDlp] = "2026.09.01", [ToolId.Deno] = "2.5.1", [ToolId.Ffmpeg] = "N-1-gabc", [ToolId.GalleryDl] = "1.32.20", [ToolId.TwitchDownloader] = "1.56.5" };
 
     public List<ToolId> InstallCalls { get; } = [];
 

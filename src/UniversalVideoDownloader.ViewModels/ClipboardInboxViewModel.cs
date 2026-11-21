@@ -130,11 +130,13 @@ public sealed partial class ClipboardInboxViewModel : ObservableObject
         var filter = LinkFilter.From(_settings.Current);
         var known = Links.Select(l => LinkKey.For(l.Url)).ToHashSet(StringComparer.Ordinal);
         var fresh = new List<string>();
+        var automatic = _settings.Current.AutoQueueClipboardLinks;
+        var mode = automatic ? _downloads.AutomaticClipboardMode : _downloads.AddMode;
         foreach (var snapshot in snapshots)
         {
             foreach (var url in filter.Apply(LinkExtractor.FromClipboard(snapshot.Text, snapshot.Html)))
             {
-                if (known.Add(LinkKey.For(url)) && !_downloads.Contains(url))
+                if (known.Add(LinkKey.For(url)) && !_downloads.Contains(url, mode))
                 {
                     fresh.Add(url);
                 }
@@ -146,9 +148,9 @@ public sealed partial class ClipboardInboxViewModel : ObservableObject
             return 0;
         }
 
-        if (_settings.Current.AutoQueueClipboardLinks)
+        if (automatic)
         {
-            _downloads.Report(_downloads.Enqueue(fresh, _downloads.AddMode), " from the clipboard");
+            _downloads.Report(_downloads.Enqueue(fresh, mode), " from the clipboard");
             return fresh.Count;
         }
 

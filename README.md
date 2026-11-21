@@ -1,14 +1,20 @@
 # Universal Video Downloader
 
-A Windows desktop app (WinUI 3, Jupiter.UI, C# and Rust) for yt-dlp. It downloads single links or large batches
-at the best available quality, collects video links as you copy them anywhere in Windows, and keeps
-yt-dlp, deno and ffmpeg (with ffprobe) installed and up to date.
+A Windows desktop downloader (WinUI 3, Jupiter.UI, C# and Rust) for video, audio, galleries, Twitch chat, and Audible audiobooks. It queues single links or batches and collects links from the Windows clipboard.
 
 ## What it does
 
 - Downloads: paste or type any number of links into the box on the Downloads page, use
   "Add from clipboard", import a text file, or drag links and text files onto the Downloads page. Each link can be video
   (best video + best audio, merged) or audio only.
+- Galleries and Twitch: install gallery-dl or TwitchDownloader from Tools, then choose Gallery,
+  Twitch video, Twitch chat, or Twitch chat video before adding links. Gallery files go under
+  `Galleries`. Twitch VODs and clips are saved as MP4 under `Twitch`, chat is saved as JSON, and
+  Twitch chat video saves both the archive and an MP4 render.
+- Audible Library: install and sign in through [Libation](https://github.com/rmcrackan/Libation/releases/latest).
+  UVD detects an installed copy, or you can choose the folder containing `LibationCli.exe`.
+  Load the saved library or refresh it from Audible, select a title, and queue it. Libation uses its
+  own Books folder and audio format settings.
 - Queue: runs a configurable number of downloads at once, with progress, speed, time left, a per-item
   log, cancel, retry, open file and show in folder. Unfinished items are saved and come back paused
   the next time the app starts. yt-dlp resumes partial files.
@@ -19,12 +25,13 @@ yt-dlp, deno and ffmpeg (with ffprobe) installed and up to date.
   picked up too. Clipboard entries that password managers mark as private are ignored.
 - Tools: on start-up it checks for yt-dlp, deno and ffmpeg, installs whatever is missing and
   applies updates (both can be switched off in Settings). Downloads come from the official GitHub
-  releases (yt-dlp/yt-dlp, denoland/deno, BtbN/FFmpeg-Builds) and are checked against the
-  published SHA-256 before anything is replaced. Updates wait until running downloads finish.
+  releases and are checked against the published SHA-256 before installation.
+  gallery-dl and TwitchDownloader are optional installs on the Tools page. UVD uses the existing
+  Libation installation. Updates wait until running downloads finish.
 
 ## Install
 
-Download **UniversalVideoDownloader-0.2.0-Setup.exe** from the
+Download **UniversalVideoDownloader-0.3.0-Setup.exe** from the
 [latest release](https://github.com/ianrastall/universal-video-downloader/releases/latest).
 Run the installer, then open **Universal Video Downloader** from the Windows Start Menu.
 The installer runs per user without administrator rights and bundles .NET and Windows App SDK.
@@ -47,7 +54,7 @@ with a Windows SDK, PowerShell 7, and **Inno Setup 6**. Run from this checkout:
 .\build.ps1 -Verify
 ```
 
-The normal build produces `artifacts/installer/UniversalVideoDownloader-0.2.0-Setup.exe` and
+The normal build produces `artifacts/installer/UniversalVideoDownloader-0.3.0-Setup.exe` and
 `artifacts/SHA256SUMS.txt`. Add `-Install` to install it locally. Publishing a folder by itself
 is not the release process.
 
@@ -82,7 +89,7 @@ variable to use another folder):
 
 - `settings.json`: settings.
 - `queue.json`: unfinished downloads.
-- `tools\`: yt-dlp, deno, ffmpeg, ffprobe and ffmpeg's DLLs, plus `.uvd-tools.json` recording installed versions.
+- `tools\`: managed tool executables, FFmpeg libraries, and `.uvd-tools.json` recording installed versions.
 - `error.log`: unexpected errors.
 
 If a `tools` folder containing yt-dlp sits next to the exe, it is used instead, which keeps a

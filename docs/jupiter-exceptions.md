@@ -14,8 +14,8 @@ Jupiter.UI.targets runs its style checker in Error mode on every app build.
 
 ## Architectural exceptions
 
-- **Incremental core migration:** the Rust core owns yt-dlp output interpretation, and every
-  download passes through it. The existing tested C# argument builder, tool updater, settings,
+- **Incremental core migration:** the Rust core owns yt-dlp output interpretation. Managed adapters run gallery-dl, TwitchDownloader,
+  and Libation and translate their process output into queue events. The C# argument builder, tool updater, settings,
   queue orchestration and process adapter are retained in this release to preserve the stable
   program's behavior. This is a deliberate partial domain migration, not a claim that the whole
   application core has moved to Rust. Future migrations should have a concrete behavioral benefit.

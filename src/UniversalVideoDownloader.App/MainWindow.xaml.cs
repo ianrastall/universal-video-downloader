@@ -34,7 +34,7 @@ public sealed partial class MainWindow : Window
         };
         AppWindow.SetIcon(Path.Combine(AppContext.BaseDirectory, "Assets", "UniversalVideoDownloader.ico"));
         RootGrid.Loaded += OnLoaded;
-        Closed += (_, _) => { SavePlacement(); ViewModel.Shutdown(); App.Themes.Detach(this); App.Accent.Detach(RootGrid); };
+        Closed += (_, _) => { SavePlacement(); ViewModel.Shutdown(); App.GetService<AudibleViewModel>().Cancel(); App.Themes.Detach(this); App.Accent.Detach(RootGrid); };
     }
     private void RestorePlacement()
     {
@@ -80,12 +80,19 @@ public sealed partial class MainWindow : Window
     private void OnNavigationSelectionChanged(NavigationView sender, NavigationViewSelectionChangedEventArgs args)
     {
         var tag = (args.SelectedItem as NavigationViewItem)?.Tag as string;
-        var page = args.IsSettingsSelected ? typeof(SettingsPage) : tag == "Tools" ? typeof(ToolsPage) : tag == "Clipboard" ? typeof(ClipboardPage) : typeof(DownloadsPage);
+        var page = args.IsSettingsSelected ? typeof(SettingsPage) : tag switch
+        {
+            "Tools" => typeof(ToolsPage),
+            "Clipboard" => typeof(ClipboardPage),
+            "Audible" => typeof(AudiblePage),
+            _ => typeof(DownloadsPage),
+        };
         if (ContentFrame.CurrentSourcePageType != page) ContentFrame.Navigate(page);
     }
     private void SettingsClicked(object sender, RoutedEventArgs e) => Nav.SelectedItem = Nav.SettingsItem;
     private void DownloadsClicked(object sender, RoutedEventArgs e) => Nav.SelectedItem = DownloadsItem;
     private void ClipboardClicked(object sender, RoutedEventArgs e) => Nav.SelectedItem = ClipboardItem;
+    private void AudibleClicked(object sender, RoutedEventArgs e) => Nav.SelectedItem = AudibleItem;
     private void ToolsClicked(object sender, RoutedEventArgs e) => Nav.SelectedItem = ToolsItem;
     private void ExitClicked(object sender, RoutedEventArgs e) => Close();
     private void ItemClicked(object sender, RoutedEventArgs e)
@@ -105,7 +112,7 @@ public sealed partial class MainWindow : Window
     private async void AboutClicked(object sender, RoutedEventArgs e)
     {
         var dialog = new ContentDialog { XamlRoot = RootGrid.XamlRoot, Title = WindowTitle,
-            Content = "Part of Jupiter\nVersion 0.2.0 · MIT license\nWinUI 3 shell and Rust download parser\nBuild: " + typeof(App).Assembly.GetName().Version,
+            Content = $"Part of Jupiter\nVersion {typeof(App).Assembly.GetName().Version?.ToString(3)} · MIT license\nWinUI 3 shell and Rust download parser",
             CloseButtonText = "Close" };
         App.Themes.Attach(dialog);
         try { await dialog.ShowAsync(); } finally { App.Themes.Detach(dialog); }

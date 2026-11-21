@@ -51,6 +51,8 @@ public sealed class AppSettings
     /// <summary>Folder holding yt-dlp, deno and ffmpeg. Null or empty means automatic.</summary>
     public string? ToolsDirectory { get; set; }
 
+    public string? LibationDirectory { get; set; }
+
     public UpdateChannel YtDlpChannel { get; set; } = UpdateChannel.Stable;
     public bool CheckForToolUpdatesOnStartup { get; set; } = true;
     public bool InstallToolUpdatesAutomatically { get; set; } = true;
@@ -60,6 +62,11 @@ public sealed class AppSettings
     /// <summary>Clamp values a hand-edited file could have put out of range.</summary>
     public void Normalize()
     {
+        if (DefaultMode is not (DownloadMode.Video or DownloadMode.Audio))
+        {
+            DefaultMode = DownloadMode.Video;
+        }
+
         Concurrency = Math.Clamp(Concurrency, 1, 8);
         if (MaxHeight < 0)
         {

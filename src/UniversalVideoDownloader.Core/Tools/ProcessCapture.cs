@@ -7,7 +7,7 @@ internal static class ProcessCapture
 {
     /// <summary>Run a program without a console window and return its stdout, or null on
     /// failure, non-zero exit, or timeout.</summary>
-    public static async Task<string?> RunAsync(string exe, IEnumerable<string> args, TimeSpan timeout, CancellationToken ct)
+    public static async Task<string?> RunAsync(string exe, IEnumerable<string> args, TimeSpan timeout, CancellationToken ct, int? additionalSuccessCode = null, bool fallbackToStderr = false)
     {
         var psi = new ProcessStartInfo(exe)
         {
@@ -38,8 +38,10 @@ internal static class ProcessCapture
             var stderr = process.StandardError.ReadToEndAsync(cts.Token);
             await process.WaitForExitAsync(cts.Token).ConfigureAwait(false);
             var output = await stdout.ConfigureAwait(false);
-            await stderr.ConfigureAwait(false);
-            return process.ExitCode == 0 ? output : null;
+            var diagnostics = await stderr.ConfigureAwait(false);
+            if (process.ExitCode != 0 && process.ExitCode != additionalSuccessCode) return null;
+
+            return fallbackToStderr && string.IsNullOrWhiteSpace(output) ? diagnostics : output;
         }
         catch (OperationCanceledException) when (!ct.IsCancellationRequested)
         {

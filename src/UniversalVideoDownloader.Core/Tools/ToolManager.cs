@@ -7,7 +7,7 @@ using UniversalVideoDownloader.Core.Settings;
 namespace UniversalVideoDownloader.Core.Tools;
 
 /// <summary>
-/// Finds, checks and installs yt-dlp, deno and ffmpeg from their official GitHub releases.
+/// Finds, checks and installs tools from their official releases.
 /// Every download is verified against the SHA-256 the release publishes before it is installed.
 /// </summary>
 public sealed class ToolManager : IToolManager, IDisposable
@@ -63,11 +63,26 @@ public sealed class ToolManager : IToolManager, IDisposable
         string? found = id switch
         {
             ToolId.YtDlp => (await ProcessCapture.RunAsync(exe, ["--version"], timeout, ct).ConfigureAwait(false))?.Trim(),
+            ToolId.GalleryDl => (await ProcessCapture.RunAsync(exe, ["--version"], timeout, ct).ConfigureAwait(false))?.Trim(),
+            ToolId.TwitchDownloader => await ReadTwitchVersionAsync(exe, timeout, ct).ConfigureAwait(false),
             ToolId.Deno => ParseDenoVersion(await ProcessCapture.RunAsync(exe, ["--version"], timeout, ct).ConfigureAwait(false)),
             ToolId.Ffmpeg => ParseFfmpegVersion(await ProcessCapture.RunAsync(exe, ["-hide_banner", "-version"], timeout, ct).ConfigureAwait(false)),
             _ => null,
         };
         return string.IsNullOrWhiteSpace(found) ? "unknown" : found;
+    }
+
+    private static async Task<string?> ReadTwitchVersionAsync(string exe, TimeSpan timeout, CancellationToken ct)
+    {
+        var output = await ProcessCapture.RunAsync(exe, ["--version"], timeout, ct, additionalSuccessCode: 1, fallbackToStderr: true).ConfigureAwait(false);
+        const string prefix = "TwitchDownloaderCLI ";
+        if (output?.StartsWith(prefix, StringComparison.Ordinal) != true)
+        {
+            return null;
+        }
+
+        var version = output[prefix.Length..].Trim().Split('+', 2)[0];
+        return Version.TryParse(version, out _) ? version : null;
     }
 
     /// <summary><c>deno 2.5.1 (stable, release, x86_64-pc-windows-msvc)</c> → <c>2.5.1</c>.</summary>
@@ -178,6 +193,32 @@ public sealed class ToolManager : IToolManager, IDisposable
                 throw new InvalidDataException("No FFmpeg master build found in recent releases.");
             }
 
+            case ToolId.GalleryDl:
+            {
+                Require(OperatingSystem.IsWindows() ? "gallery-dl.exe" : "", "gallery-dl");
+                const string name = "gallery-dl.exe";
+                using var request = new HttpRequestMessage(HttpMethod.Get, "https://codeberg.org/api/v1/repos/mikf/gallery-dl/releases/latest");
+                using var response = await _http.SendAsync(request, ct).ConfigureAwait(false);
+                response.EnsureSuccessStatusCode();
+                await using var stream = await response.Content.ReadAsStreamAsync(ct).ConfigureAwait(false);
+                using var doc = await JsonDocument.ParseAsync(stream, cancellationToken: ct).ConfigureAwait(false);
+                var rel = doc.RootElement;
+                var version = (rel.GetProperty("tag_name").GetString() ?? throw new InvalidDataException("Release has no tag.")).TrimStart('v');
+                var asset = FindAsset(rel, n => n == name) ?? throw new InvalidDataException($"Release {version} has no {name}.");
+                return ReleaseFrom(rel, version, asset, "SHA256SUMS");
+            }
+
+            case ToolId.TwitchDownloader:
+            {
+                Require(OperatingSystem.IsWindows() ? "Windows-x64.zip" : "", "TwitchDownloader");
+                using var doc = await GitHubAsync("repos/lay295/TwitchDownloader/releases/latest", ct).ConfigureAwait(false);
+                var rel = doc.RootElement;
+                var version = rel.GetProperty("tag_name").GetString() ?? throw new InvalidDataException("Release has no tag.");
+                var name = $"TwitchDownloaderCLI-{version}-Windows-x64.zip";
+                var asset = FindAsset(rel, n => n == name) ?? throw new InvalidDataException($"Release {version} has no {name}.");
+                return ReleaseFrom(rel, version.TrimStart('v'), asset, null);
+            }
+
             default:
                 throw new ArgumentOutOfRangeException(nameof(id));
         }
@@ -232,15 +273,18 @@ public sealed class ToolManager : IToolManager, IDisposable
         return null;
     }
 
-    private static ToolRelease ReleaseFrom(JsonElement release, string version, JsonElement asset, string checksumAssetName)
+    private static ToolRelease ReleaseFrom(JsonElement release, string version, JsonElement asset, string? checksumAssetName)
     {
-        var checksum = FindAsset(release, n => n == checksumAssetName);
+        var checksum = checksumAssetName is null ? null : FindAsset(release, n => n == checksumAssetName);
+        var digest = asset.TryGetProperty("digest", out var digestValue) ? digestValue.GetString() : null;
+        var sha256 = digest?.StartsWith("sha256:", StringComparison.Ordinal) == true ? digest[7..] : null;
         return new ToolRelease(
             version,
             asset.GetProperty("name").GetString() ?? "",
             asset.GetProperty("browser_download_url").GetString() ?? throw new InvalidDataException("Asset has no download URL."),
             checksum?.GetProperty("browser_download_url").GetString(),
-            asset.TryGetProperty("size", out var size) && size.TryGetInt64(out var s) ? s : null);
+            asset.TryGetProperty("size", out var size) && size.TryGetInt64(out var s) ? s : null,
+            sha256);
     }
 
     // ----- install -----------------------------------------------------------
@@ -300,15 +344,19 @@ public sealed class ToolManager : IToolManager, IDisposable
         var archive = Path.Combine(staging, release.AssetName);
         var actual = await DownloadAsync(release, archive, progress, ct).ConfigureAwait(false);
 
-        if (release.ChecksumUrl is null)
+        progress?.Report(new ToolInstallProgress("Verifying checksum"));
+        var expected = release.Sha256;
+        if (release.ChecksumUrl is { } checksumUrl)
+        {
+            var sums = await _http.GetStringAsync(checksumUrl, ct).ConfigureAwait(false);
+            expected = ChecksumParser.Find(sums, release.AssetName);
+        }
+
+        if (expected is null)
         {
             throw new InvalidDataException($"The release publishes no checksum for {release.AssetName}; refusing to install it.");
         }
 
-        progress?.Report(new ToolInstallProgress("Verifying checksum"));
-        var sums = await _http.GetStringAsync(release.ChecksumUrl, ct).ConfigureAwait(false);
-        var expected = ChecksumParser.Find(sums, release.AssetName)
-            ?? throw new InvalidDataException($"No checksum is listed for {release.AssetName}.");
         if (!string.Equals(expected, actual, StringComparison.OrdinalIgnoreCase))
         {
             throw new InvalidDataException($"Checksum mismatch for {release.AssetName} (expected {expected}, got {actual}).");
@@ -320,8 +368,8 @@ public sealed class ToolManager : IToolManager, IDisposable
         var exeName = id.ExecutableName();
         List<string> files = id switch
         {
-            ToolId.YtDlp => MoveSingle(archive, Path.Combine(unpacked, exeName)),
-            ToolId.Deno => ZipExtraction.Extract(archive, unpacked, entry => Path.GetFileName(entry) == exeName),
+            ToolId.YtDlp or ToolId.GalleryDl => MoveSingle(archive, Path.Combine(unpacked, exeName)),
+            ToolId.Deno or ToolId.TwitchDownloader => ZipExtraction.Extract(archive, unpacked, entry => Path.GetFileName(entry) == exeName),
             ToolId.Ffmpeg => ZipExtraction.Extract(archive, unpacked, entry => ZipExtraction.ParentFolderName(entry) == "bin"),
             _ => throw new ArgumentOutOfRangeException(nameof(id)),
         };

@@ -8,7 +8,7 @@
     <MenuFlyoutItem Text="Import text file…" Command="{x:Bind Downloads.ImportFileCommand}" />
     <MenuFlyoutSeparator/><MenuFlyoutItem x:Name="SettingsMenuItem" Text="Settings" Click="SettingsClicked" /><MenuFlyoutSeparator/><MenuFlyoutItem Text="Exit" Click="ExitClicked" />
    </MenuBarItem>
-   <MenuBarItem Title="View"><MenuFlyoutItem Text="Downloads" Click="DownloadsClicked"/><MenuFlyoutItem Text="Clipboard" Click="ClipboardClicked"/><MenuFlyoutItem Text="Tools" Click="ToolsClicked"/></MenuBarItem>
+   <MenuBarItem Title="View"><MenuFlyoutItem Text="Downloads" Click="DownloadsClicked"/><MenuFlyoutItem Text="Clipboard" Click="ClipboardClicked"/><MenuFlyoutItem Text="Audible Library" Click="AudibleClicked"/><MenuFlyoutItem Text="Tools" Click="ToolsClicked"/></MenuBarItem>
    <MenuBarItem Title="Queue">
     <MenuFlyoutItem Text="Add to queue" Command="{x:Bind Downloads.AddFromInputCommand}"/>
     <MenuFlyoutItem Text="Add from clipboard" Command="{x:Bind Downloads.AddFromClipboardCommand}"/>
@@ -43,6 +43,7 @@
    <NavigationView.MenuItems>
     <NavigationViewItem x:Name="DownloadsItem" Content="Downloads" Tag="Downloads" Icon="Download"/>
     <NavigationViewItem x:Name="ClipboardItem" Content="Clipboard" Tag="Clipboard" Icon="Paste"/>
+    <NavigationViewItem x:Name="AudibleItem" Content="Audible Library" Tag="Audible" Icon="Audio"/>
     <NavigationViewItem x:Name="ToolsItem" Content="Tools" Tag="Tools" Icon="Repair"/>
    </NavigationView.MenuItems>
    <Grid Background="{ThemeResource JupiterWindowBrush}"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>

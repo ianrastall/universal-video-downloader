@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.0 — 20 November 2026
+
+- Added gallery-dl for galleries and mixed media posts, with verified installation from Codeberg.
+- Added TwitchDownloader for VODs, clips, JSON chat archives, and MP4 chat rendering.
+- Added Audible Library to load and refresh a Libation library and queue audiobook backups.
+- Saved specialist download types with unfinished queue entries.
+
 ## 0.2.0 — 1 November 2026
 
 - Adopt Jupiter.UI 1.1 with a standard title bar, menu bar, left navigation, flat queue and

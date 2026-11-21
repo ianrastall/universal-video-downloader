@@ -5,11 +5,24 @@ namespace UniversalVideoDownloader.Core.Downloads;
 
 public sealed class YtDlpRunner : IDownloadRunner
 {
-    public async Task<int> RunAsync(DownloadRequest request, Action<JobUpdate> onUpdate, CancellationToken ct)
+    public Task<int> RunAsync(DownloadRequest request, Action<JobUpdate> onUpdate, CancellationToken ct) =>
+        DownloadProcess.RunAsync(request.ExecutablePath, request.ToolsDirectory, request.Arguments, (line, fromStdErr) =>
+        {
+            foreach (var update in YtDlpOutputParser.Parse(line, fromStdErr))
+            {
+                onUpdate(update);
+            }
+        }, ct);
+}
+
+internal static class DownloadProcess
+{
+    internal static async Task<int> RunAsync(
+        string executable, string toolsDirectory, IReadOnlyList<string> arguments, Action<string, bool> onLine, CancellationToken ct)
     {
         ct.ThrowIfCancellationRequested();
 
-        var psi = new ProcessStartInfo(request.YtDlpPath)
+        var psi = new ProcessStartInfo(executable)
         {
             UseShellExecute = false,
             CreateNoWindow = true,
@@ -18,9 +31,9 @@ public sealed class YtDlpRunner : IDownloadRunner
             RedirectStandardError = true,
             StandardOutputEncoding = Encoding.UTF8,
             StandardErrorEncoding = Encoding.UTF8,
-            WorkingDirectory = request.ToolsDirectory,
+            WorkingDirectory = Path.GetDirectoryName(executable)!,
         };
-        foreach (var arg in request.Arguments)
+        foreach (var arg in arguments)
         {
             psi.ArgumentList.Add(arg);
         }
@@ -28,7 +41,7 @@ public sealed class YtDlpRunner : IDownloadRunner
         // yt-dlp finds ffmpeg/deno via its own options, but keeping the tools folder first on PATH
         // covers anything it launches by name. Force UTF-8 so titles in any script survive.
         var path = Environment.GetEnvironmentVariable("PATH") ?? "";
-        psi.Environment["PATH"] = request.ToolsDirectory + System.IO.Path.PathSeparator + path;
+        psi.Environment["PATH"] = toolsDirectory + System.IO.Path.PathSeparator + path;
         psi.Environment["PYTHONIOENCODING"] = "utf-8";
         psi.Environment["PYTHONUTF8"] = "1";
 
@@ -49,8 +62,8 @@ public sealed class YtDlpRunner : IDownloadRunner
             }
         });
 
-        var stdout = PumpAsync(process.StandardOutput, fromStdErr: false, onUpdate);
-        var stderr = PumpAsync(process.StandardError, fromStdErr: true, onUpdate);
+        var stdout = PumpAsync(process.StandardOutput, fromStdErr: false, onLine);
+        var stderr = PumpAsync(process.StandardError, fromStdErr: true, onLine);
         await Task.WhenAll(stdout, stderr).ConfigureAwait(false);
         await process.WaitForExitAsync(CancellationToken.None).ConfigureAwait(false);
 
@@ -58,7 +71,7 @@ public sealed class YtDlpRunner : IDownloadRunner
         return process.ExitCode;
     }
 
-    private static async Task PumpAsync(StreamReader reader, bool fromStdErr, Action<JobUpdate> onUpdate)
+    private static async Task PumpAsync(StreamReader reader, bool fromStdErr, Action<string, bool> onLine)
     {
         // ReadLineAsync splits on \r as well as \n, so carriage-return progress redraws become lines.
         while (await reader.ReadLineAsync().ConfigureAwait(false) is { } line)
@@ -69,10 +82,7 @@ public sealed class YtDlpRunner : IDownloadRunner
                 continue;
             }
 
-            foreach (var update in YtDlpOutputParser.Parse(line, fromStdErr))
-            {
-                onUpdate(update);
-            }
+            onLine(line, fromStdErr);
         }
     }
 }

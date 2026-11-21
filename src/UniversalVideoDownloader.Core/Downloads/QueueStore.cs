@@ -11,7 +11,7 @@ public enum SavedDownloadState
 }
 
 /// <summary>An unfinished queue entry, kept across restarts.</summary>
-public sealed record SavedDownload(string Url, DownloadMode Mode, SavedDownloadState State = SavedDownloadState.Queued, string? Error = null);
+public sealed record SavedDownload(string Url, DownloadMode Mode, SavedDownloadState State = SavedDownloadState.Queued, string? Error = null, string? Title = null);
 
 public sealed class QueueStore(string path)
 {

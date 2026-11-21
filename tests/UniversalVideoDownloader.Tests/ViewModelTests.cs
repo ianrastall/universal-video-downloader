@@ -225,7 +225,8 @@ public class ToolsViewModelTests
         await app.Tools.StartupAsync();
 
         Assert.Equal([ToolId.YtDlp, ToolId.Deno, ToolId.Ffmpeg], app.ToolManager.InstallCalls);
-        Assert.All(app.Tools.Tools, t => Assert.Equal("Up to date", t.StatusText));
+        Assert.All(app.Tools.Tools.Where(t => !t.Id.IsOptional()), t => Assert.Equal("Up to date", t.StatusText));
+        Assert.All(app.Tools.Tools.Where(t => t.Id.IsOptional()), t => Assert.False(t.IsInstalled));
         Assert.False(app.Coordinator.ToolsBusy);
     }
 

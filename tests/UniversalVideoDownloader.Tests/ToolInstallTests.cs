@@ -91,6 +91,23 @@ public sealed class ToolInstallTests : IDisposable
         Assert.Equal(new ToolRelease("2026.09.01", asset, "https://dl/bin", "https://dl/sums", 1234), release);
     }
 
+    [Fact]
+    public async Task Twitch_installs_only_its_cli_after_validating_the_release_digest()
+    {
+        var executable = ToolId.TwitchDownloader.ExecutableName();
+        var zip = Zip((executable, "new Twitch CLI"), ("README.txt", "not the CLI"));
+        const string url = "https://dl.example/TwitchDownloaderCLI.zip";
+        _http.Responses[url] = zip;
+        var release = new ToolRelease("1.56.5", "TwitchDownloaderCLI.zip", url, null, zip.Length, Sha(zip));
+
+        await _manager.InstallAsync(_dir, ToolId.TwitchDownloader, release, null, TestContext.Current.CancellationToken);
+        await Assert.ThrowsAsync<InvalidDataException>(() => _manager.InstallAsync(_dir, ToolId.TwitchDownloader,
+            release with { Sha256 = new string('0', 64) }, null, TestContext.Current.CancellationToken));
+
+        Assert.Equal("new Twitch CLI", File.ReadAllText(ToolId.TwitchDownloader.ExecutablePath(_dir)));
+        Assert.False(File.Exists(Path.Combine(_dir, "README.txt")));
+    }
+
     private ToolRelease Serve(string assetName, byte[] asset, string checksumName, string checksumText)
     {
         _http.Responses["https://dl.example/" + assetName] = asset;

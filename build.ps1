@@ -2,7 +2,7 @@ param([switch]$Verify, [switch]$Install, [string]$JupiterUIRoot)
 $ErrorActionPreference = 'Stop'
 Push-Location $PSScriptRoot
 try {
-    $version = '0.2.0'
+    $version = ([xml](Get-Content Directory.Build.props -Raw)).Project.PropertyGroup.Version
     if (-not $JupiterUIRoot) { $JupiterUIRoot = Join-Path (Split-Path $PSScriptRoot -Parent) 'jupiter-ui' }
     $JupiterUIRoot = [System.IO.Path]::GetFullPath($JupiterUIRoot)
     if (-not (Test-Path -LiteralPath (Join-Path $JupiterUIRoot 'build\Jupiter.UI.targets'))) {
@@ -34,10 +34,10 @@ try {
     if ($LASTEXITCODE) { throw 'Publish failed.' }
     Copy-Item -LiteralPath LICENSE,THIRD-PARTY-NOTICES.md -Destination $publish -Force
     Copy-Item -LiteralPath build\notices -Destination $publish -Recurse -Force
-    foreach ($file in @('UniversalVideoDownloader.exe','UniversalVideoDownloader.pri','MainWindow.xbf','Views\DownloadsPage.xbf','Views\ClipboardPage.xbf','Views\SettingsPage.xbf','Views\ToolsPage.xbf','Jupiter.UI.dll','uvd_core.dll','coreclr.dll','Microsoft.UI.Xaml.dll')) {
+    foreach ($file in @('UniversalVideoDownloader.exe','UniversalVideoDownloader.pri','MainWindow.xbf','Views\DownloadsPage.xbf','Views\ClipboardPage.xbf','Views\AudiblePage.xbf','Views\SettingsPage.xbf','Views\ToolsPage.xbf','Jupiter.UI.dll','uvd_core.dll','coreclr.dll','Microsoft.UI.Xaml.dll')) {
         if (-not (Test-Path -LiteralPath (Join-Path $publish $file))) { throw "Missing published file: $file" }
     }
-    foreach ($file in @('yt-dlp.exe','deno.exe','ffmpeg.exe','ffprobe.exe')) {
+    foreach ($file in @('yt-dlp.exe','deno.exe','ffmpeg.exe','ffprobe.exe','gallery-dl.exe','TwitchDownloaderCLI.exe','LibationCli.exe')) {
         if (Get-ChildItem -LiteralPath $publish -Recurse -File -Filter $file) { throw "External tool must not be bundled: $file" }
     }
     $iscc = @((Get-Command ISCC -ErrorAction SilentlyContinue).Source,"$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe","${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe") | Where-Object { $_ -and (Test-Path -LiteralPath $_) } | Select-Object -First 1

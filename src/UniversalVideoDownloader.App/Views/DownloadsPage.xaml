@@ -9,15 +9,15 @@
 
     <Grid Padding="24" RowSpacing="12" Background="{ThemeResource JupiterWindowBrush}" AllowDrop="True" DragOver="OnDragOver" Drop="OnDrop">
       <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-      <TextBox x:Name="LinksInput" Header="Video or audio links" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="80" MaxHeight="160"
+      <TextBox x:Name="LinksInput" Header="Links" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="80" MaxHeight="160"
        PlaceholderText="Paste links here, or drop them onto this page."
        Text="{x:Bind ViewModel.InputText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
       <StackPanel Grid.Row="1" Spacing="8">
         <StackPanel Orientation="Horizontal" Spacing="8">
+          <ComboBox AutomationProperties.Name="Download type" ItemsSource="{x:Bind ViewModel.AddModeOptions}" SelectedIndex="{x:Bind ViewModel.AddModeIndex, Mode=TwoWay}" />
           <Button Content="Add to queue" Style="{StaticResource AccentButtonStyle}" Command="{x:Bind ViewModel.AddFromInputCommand}" />
           <Button Content="Add from clipboard" Command="{x:Bind ViewModel.AddFromClipboardCommand}" />
           <Button Content="Import text file…" Command="{x:Bind ViewModel.ImportFileCommand}" />
-          <ToggleSwitch Header="New links" OffContent="Video" OnContent="Audio only" IsOn="{x:Bind ViewModel.AddAsAudio, Mode=TwoWay}" />
         </StackPanel>
         <TextBlock TextWrapping="Wrap" Style="{StaticResource JupiterCaptionTextStyle}" Text="{x:Bind ViewModel.InputSummary, Mode=OneWay}" />
       </StackPanel>

@@ -7,7 +7,7 @@ using UniversalVideoDownloader.ViewModels.Services;
 namespace UniversalVideoDownloader.ViewModels;
 
 /// <summary>
-/// Keeps yt-dlp, deno and ffmpeg (with ffprobe) installed and current.
+/// Keeps the managed download tools installed and current.
 /// Runs on the UI thread; awaits resume there.
 /// </summary>
 public sealed partial class ToolsViewModel : ObservableObject
@@ -88,8 +88,8 @@ public sealed partial class ToolsViewModel : ObservableObject
         var current = _settings.Current;
         await RunExclusiveAsync(async () =>
         {
-            await CheckCoreAsync(fetchLatest: current.CheckForToolUpdatesOnStartup);
-            var needed = Tools.Where(t => !t.IsInstalled || t.UpdateAvailable).ToList();
+            await CheckCoreAsync(fetchLatest: current.CheckForToolUpdatesOnStartup, includeMissingOptional: false);
+            var needed = Tools.Where(t => (!t.Id.IsOptional() && !t.IsInstalled) || t.UpdateAvailable).ToList();
             if (needed.Count == 0)
             {
                 return;
@@ -102,7 +102,7 @@ public sealed partial class ToolsViewModel : ObservableObject
             }
             else
             {
-                var missing = Tools.Where(t => !t.IsInstalled).Select(t => t.Name).ToList();
+                var missing = needed.Where(t => !t.IsInstalled).Select(t => t.Name).ToList();
                 _notifications.Show(
                     missing.Count > 0
                         ? $"Not installed: {string.Join(", ", missing)}. Open Tools to install."
@@ -118,7 +118,7 @@ public sealed partial class ToolsViewModel : ObservableObject
         await RunExclusiveAsync(async () =>
         {
             await CheckCoreAsync(fetchLatest: false);
-            var missing = Tools.Where(t => !t.IsInstalled).ToList();
+            var missing = Tools.Where(t => !t.Id.IsOptional() && !t.IsInstalled).ToList();
             if (missing.Count > 0)
             {
                 await InstallCoreAsync(missing);
@@ -222,7 +222,7 @@ public sealed partial class ToolsViewModel : ObservableObject
         }
     }
 
-    private async Task CheckCoreAsync(bool fetchLatest)
+    private async Task CheckCoreAsync(bool fetchLatest, bool includeMissingOptional = true)
     {
         var directory = ToolsDirectory;
         var channel = _settings.Current.YtDlpChannel;
@@ -237,7 +237,7 @@ public sealed partial class ToolsViewModel : ObservableObject
             {
                 tool.InstalledVersion = await _manager.GetLocalVersionAsync(directory, tool.Id);
                 UpdateDetail(tool, directory);
-                if (fetchLatest)
+                if (fetchLatest && (includeMissingOptional || !tool.Id.IsOptional() || tool.IsInstalled))
                 {
                     try
                     {

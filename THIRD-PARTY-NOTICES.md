@@ -7,12 +7,15 @@ The installer includes .NET and Windows App SDK runtime components and the libra
 Their upstream licenses and notices continue to apply. This inventory is generated from the
 resolved NuGet dependency graph; build-only packages may appear in it.
 
-The installer does not contain yt-dlp, Deno, FFmpeg or FFprobe. The app retrieves them directly
-from official upstream releases and verifies their published SHA-256 before installation:
+UVD retrieves the managed tools from official upstream releases and verifies their published SHA-256 before installation.
 
 - yt-dlp: https://github.com/yt-dlp/yt-dlp#license . Executable distributions can include dependencies with additional licenses; consult the downloaded release's notices.
 - Deno: https://github.com/denoland/deno/blob/main/LICENSE.md (MIT and included third-party components).
 - FFmpeg / FFprobe: https://github.com/BtbN/FFmpeg-Builds . The selected win64-gpl-shared build is GPL; its separate processes are not linked into this application. https://ffmpeg.org/legal.html . Anyone redistributing those downloaded tools must carry the applicable notices and corresponding-source obligations. They are not covered by this application's MIT license.
+
+- gallery-dl uses its [upstream license and notices](https://codeberg.org/mikf/gallery-dl/src/branch/master/COPYING).
+- TwitchDownloader uses its [upstream license and notices](https://github.com/lay295/TwitchDownloader/blob/master/LICENSE).
+- Audible Library uses an existing [Libation installation](https://github.com/rmcrackan/Libation).
 
 ## NuGet components
 

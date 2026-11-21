@@ -50,7 +50,7 @@ public sealed partial class DownloadsViewModel : ObservableObject
         _notifications = notifications;
         _coordinator = coordinator;
 
-        AddAsAudio = settings.Current.DefaultMode == DownloadMode.Audio;
+        AddModeIndex = settings.Current.DefaultMode == DownloadMode.Audio ? 1 : 0;
         Items.CollectionChanged += OnItemsChanged;
         _coordinator.Changed += (_, _) => PumpQueue();
         _settings.Changed += (_, _) => PumpQueue();
@@ -72,10 +72,16 @@ public sealed partial class DownloadsViewModel : ObservableObject
     public partial string InputSummary { get; set; } = "";
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(AddMode))]
-    public partial bool AddAsAudio { get; set; }
+    public partial int AddModeIndex { get; set; }
 
-    public DownloadMode AddMode => AddAsAudio ? DownloadMode.Audio : DownloadMode.Video;
+    public IReadOnlyList<string> AddModeOptions { get; } =
+        ["Video", "Audio only", "Gallery", "Twitch video", "Twitch chat", "Twitch chat video"];
+
+    public DownloadMode AutomaticClipboardMode => AddModeIndex == 1 ? DownloadMode.Audio : DownloadMode.Video;
+
+    public DownloadMode AddMode => AddModeIndex >= 0 && AddModeIndex < AddModeOptions.Count
+        ? (DownloadMode)AddModeIndex
+        : DownloadMode.Video;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(QueueToggleText), nameof(QueueToggleGlyph))]
@@ -183,21 +189,21 @@ public sealed partial class DownloadsViewModel : ObservableObject
     }
 
     /// <summary>Add links to the queue. Links already waiting or downloading are skipped.</summary>
-    public EnqueueResult Enqueue(IEnumerable<string> urls, DownloadMode mode)
+    public EnqueueResult Enqueue(IEnumerable<string> urls, DownloadMode mode, IReadOnlyDictionary<string, string>? titles = null)
     {
         var pending = Items.Where(i => i.Status is DownloadStatus.Queued or DownloadStatus.Running)
-            .Select(i => LinkKey.For(i.Url))
+            .Select(i => DownloadModes.QueueKey(i.Url, i.Mode))
             .ToHashSet(StringComparer.Ordinal);
         int added = 0, skipped = 0;
         foreach (var url in urls)
         {
-            if (!pending.Add(LinkKey.For(url)))
+            if (!pending.Add(DownloadModes.QueueKey(url, mode)))
             {
                 skipped++;
                 continue;
             }
 
-            Items.Add(new DownloadItemViewModel(this, url, mode));
+            Items.Add(new DownloadItemViewModel(this, url, mode) { Title = titles?.GetValueOrDefault(url) });
             added++;
         }
 
@@ -216,10 +222,10 @@ public sealed partial class DownloadsViewModel : ObservableObject
     }
 
     /// <summary>True if the link is anywhere in the list (any state).</summary>
-    public bool Contains(string url)
+    public bool Contains(string url, DownloadMode? mode = null)
     {
-        var key = LinkKey.For(url);
-        return Items.Any(i => LinkKey.For(i.Url) == key);
+        var key = DownloadModes.QueueKey(url, mode ?? AddMode);
+        return Items.Any(i => DownloadModes.QueueKey(i.Url, i.Mode) == key);
     }
 
     public void Report(EnqueueResult result, string source)
@@ -373,16 +379,24 @@ public sealed partial class DownloadsViewModel : ObservableObject
                 && Items.Count(i => i.Status == DownloadStatus.Running) < limit
                 && Items.FirstOrDefault(i => i.Status == DownloadStatus.Queued) is { } next)
             {
-                var ytDlp = ToolId.YtDlp.ExecutablePath(_settings.ToolsDirectory);
-                if (!File.Exists(ytDlp))
+                var tool = DownloadModes.Tool(next.Mode);
+                var executable = tool?.ExecutablePath(_settings.ToolsDirectory) ?? "";
+                if (tool == ToolId.YtDlp && !File.Exists(executable))
                 {
                     IsQueueRunning = false;
-                    _notifications.Show("yt-dlp is not installed yet. It is needed before anything can download.", NotificationLevel.Warning);
+                    _notifications.Show("yt-dlp is not installed yet. Install it to start this download.", NotificationLevel.Warning);
                     ToolsMissing?.Invoke(this, EventArgs.Empty);
                     return;
                 }
 
-                Start(next, ytDlp);
+                if (tool is not null && !File.Exists(executable))
+                {
+                    next.Fail($"Install {tool.Value.Name()} from the Tools page, then retry this item.");
+                    SaveQueue();
+                    continue;
+                }
+
+                Start(next, executable);
             }
         }
         finally
@@ -391,7 +405,7 @@ public sealed partial class DownloadsViewModel : ObservableObject
         }
     }
 
-    private void Start(DownloadItemViewModel item, string ytDlp)
+    private void Start(DownloadItemViewModel item, string executable)
     {
         var settings = _settings.Current;
         try
@@ -406,7 +420,13 @@ public sealed partial class DownloadsViewModel : ObservableObject
         }
 
         var toolsDirectory = _settings.ToolsDirectory;
-        var request = new DownloadRequest(ytDlp, toolsDirectory, YtDlpArguments.Build(settings, toolsDirectory, item.Mode, item.Url));
+        IReadOnlyList<string> arguments = item.Mode switch
+        {
+            DownloadMode.Video or DownloadMode.Audio => YtDlpArguments.Build(settings, toolsDirectory, item.Mode, item.Url),
+            DownloadMode.Gallery when settings.CookiesFromBrowser.Length > 0 => ["--cookies-from-browser", settings.CookiesFromBrowser],
+            _ => [],
+        };
+        var request = new DownloadRequest(executable, toolsDirectory, arguments, item.Mode, item.Url, settings.OutputDirectory);
         var cts = new CancellationTokenSource();
         item.Cancellation = cts;
         item.MarkRunning();
@@ -430,7 +450,7 @@ public sealed partial class DownloadsViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            failure = $"Could not run yt-dlp: {ex.Message}";
+            failure = $"Could not run {DownloadModes.ToolName(item.Mode)}: {ex.Message}";
         }
 
         _dispatcher.Post(() =>
@@ -497,12 +517,13 @@ public sealed partial class DownloadsViewModel : ObservableObject
         if (saved.Count > 0) IsQueueRunning = false;
         foreach (var entry in saved)
         {
-            if (Contains(entry.Url))
+            var key = DownloadModes.QueueKey(entry.Url, entry.Mode);
+            if (Items.Any(item => DownloadModes.QueueKey(item.Url, item.Mode) == key))
             {
                 continue;
             }
 
-            var item = new DownloadItemViewModel(this, entry.Url, entry.Mode);
+            var item = new DownloadItemViewModel(this, entry.Url, entry.Mode) { Title = entry.Title };
             item.Restore(entry.State, entry.Error);
             Items.Add(item);
         }
@@ -523,9 +544,9 @@ public sealed partial class DownloadsViewModel : ObservableObject
             .Where(i => i.Status != DownloadStatus.Completed)
             .Select(i => i.Status switch
             {
-                DownloadStatus.Failed => new SavedDownload(i.Url, i.Mode, SavedDownloadState.Failed, i.ErrorMessage),
-                DownloadStatus.Canceled => new SavedDownload(i.Url, i.Mode, SavedDownloadState.Canceled),
-                _ => new SavedDownload(i.Url, i.Mode),
+                DownloadStatus.Failed => new SavedDownload(i.Url, i.Mode, SavedDownloadState.Failed, i.ErrorMessage, i.Title),
+                DownloadStatus.Canceled => new SavedDownload(i.Url, i.Mode, SavedDownloadState.Canceled, Title: i.Title),
+                _ => new SavedDownload(i.Url, i.Mode, Title: i.Title),
             });
         try
         {
