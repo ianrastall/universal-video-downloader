@@ -28,7 +28,7 @@
             <AppBarButton Label="Refresh from Audible" Icon="Refresh" Command="{x:Bind ViewModel.RefreshCommand}" />
             <AppBarButton Label="Queue selected title" Icon="Add" Command="{x:Bind ViewModel.QueueSelectedCommand}" />
             <CommandBar.SecondaryCommands>
-                <AppBarButton Label="Choose Libation folderâ€¦" Command="{x:Bind ViewModel.ChooseLibationCommand}" />
+                <AppBarButton Label="Choose Libation folder..." Command="{x:Bind ViewModel.ChooseLibationCommand}" />
                 <AppBarButton Label="Open Books folder" Command="{x:Bind ViewModel.OpenBooksFolderCommand}" />
                 <AppBarButton Label="Cancel library operation" Command="{x:Bind ViewModel.CancelCommand}" />
             </CommandBar.SecondaryCommands>

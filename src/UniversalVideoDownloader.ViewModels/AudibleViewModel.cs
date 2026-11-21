@@ -98,7 +98,7 @@ public sealed partial class AudibleViewModel(
     private async Task LoadAsync(bool scan, CancellationToken ct)
     {
         IsBusy = true;
-        Status = scan ? "Scanning Audible through Libationâ€¦" : "Loading Libationâ€™s saved libraryâ€¦";
+        Status = scan ? "Scanning Audible through Libation..." : "Loading the saved Libation library...";
         try
         {
             var books = await libation.ReadLibraryAsync(scan, ct);
@@ -106,7 +106,7 @@ public sealed partial class AudibleViewModel(
             Titles.Clear();
             foreach (var book in books) Titles.Add(book);
             Status = Titles.Count > 0
-                ? $"{Formatting.Plural(Titles.Count, "title")}. Audiobooks use Libationâ€™s Books folder and audio format."
+                ? $"{Formatting.Plural(Titles.Count, "title")}. Audiobooks use the Books folder and audio format configured in Libation."
                 : "Your library is empty. Sign in through Libation and refresh.";
         }
         catch (OperationCanceledException) { Status = "Library load canceled."; }

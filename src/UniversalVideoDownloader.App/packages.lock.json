@@ -173,7 +173,7 @@
         "type": "Project",
         "dependencies": {
           "CommunityToolkit.Mvvm": "[8.4.2, )",
-          "UniversalVideoDownloader.Core": "[0.3.0, )"
+          "UniversalVideoDownloader.Core": "[0.3.1, )"
         }
       }
     },

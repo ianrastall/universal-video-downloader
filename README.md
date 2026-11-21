@@ -7,11 +7,11 @@ A Windows desktop downloader (WinUI 3, Jupiter.UI, C# and Rust) for video, audio
 - Downloads: paste or type any number of links into the box on the Downloads page, use
   "Add from clipboard", import a text file, or drag links and text files onto the Downloads page. Each link can be video
   (best video + best audio, merged) or audio only.
-- Galleries and Twitch: install gallery-dl or TwitchDownloader from Tools, then choose Gallery,
+- Install gallery-dl or TwitchDownloader from Tools, then choose Gallery,
   Twitch video, Twitch chat, or Twitch chat video before adding links. Gallery files go under
   `Galleries`. Twitch VODs and clips are saved as MP4 under `Twitch`, chat is saved as JSON, and
   Twitch chat video saves both the archive and an MP4 render.
-- Audible Library: install and sign in through [Libation](https://github.com/rmcrackan/Libation/releases/latest).
+- To use Audible Library, install and sign in through [Libation](https://github.com/rmcrackan/Libation/releases/latest).
   UVD detects an installed copy, or you can choose the folder containing `LibationCli.exe`.
   Load the saved library or refresh it from Audible, select a title, and queue it. Libation uses its
   own Books folder and audio format settings.
@@ -31,7 +31,7 @@ A Windows desktop downloader (WinUI 3, Jupiter.UI, C# and Rust) for video, audio
 
 ## Install
 
-Download **UniversalVideoDownloader-0.3.0-Setup.exe** from the
+Download **UniversalVideoDownloader-0.3.1-Setup.exe** from the
 [latest release](https://github.com/ianrastall/universal-video-downloader/releases/latest).
 Run the installer, then open **Universal Video Downloader** from the Windows Start Menu.
 The installer runs per user without administrator rights and bundles .NET and Windows App SDK.
@@ -54,7 +54,7 @@ with a Windows SDK, PowerShell 7, and **Inno Setup 6**. Run from this checkout:
 .\build.ps1 -Verify
 ```
 
-The normal build produces `artifacts/installer/UniversalVideoDownloader-0.3.0-Setup.exe` and
+The normal build produces `artifacts/installer/UniversalVideoDownloader-0.3.1-Setup.exe` and
 `artifacts/SHA256SUMS.txt`. Add `-Install` to install it locally. Publishing a folder by itself
 is not the release process.
 

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.1 — 20 November 2026
+
+- Corrected text on the Audible Library page.
+
 ## 0.3.0 — 20 November 2026
 
 - Added gallery-dl for galleries and mixed media posts, with verified installation from Codeberg.
